@@ -1,0 +1,23 @@
+.live-share-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1000;
+  transition: display 0.2s;
+  will-change: transform;
+  transition: opacity 0.3s;
+}
+
+.cursor-label {
+  position: absolute;
+  top: 20px;
+  left: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: white;
+  font-size: 10px;
+  white-space: nowrap;
+  font-family: sans-serif;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}

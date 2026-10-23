@@ -1,0 +1,44 @@
+{
+  "menu": [
+    {
+      "id": "ls_menu",
+      "label": "Live Share",
+      "submenu": [
+        {
+          "id": "ls_ss",
+          "label": "Start session",
+          "command": "liveshare:ss"
+        },
+        {
+          "id": "ls_js",
+          "label": "Join session",
+          "command": "liveshare:js"
+        },
+        {
+          "id": "ls_sd",
+          "label": "Sync document",
+          "command": "liveshare:sd",
+          "visible": false
+        },
+        {
+          "id": "ls_cs",
+          "label": "Copy session link",
+          "command": "liveshare:cs",
+          "visible": false
+        },
+        {
+          "id": "ls_es",
+          "label": "End session",
+          "command": "liveshare:es",
+          "visible": false
+        },
+        {
+          "id": "ls_pa",
+          "label": "print app",
+          "command": "liveshare:pa",
+          "visible": false
+        }
+      ]
+    }
+  ]
+}

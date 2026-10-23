@@ -1,0 +1,52 @@
+<div class="dialog">
+  <style>
+    .dialog-body {
+      padding: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      font-weight: 500;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .form-control {
+      width: 100%;
+    }
+
+    .dialog-header h1 {
+      font-size: 16px;
+      text-align: center;
+    }
+  </style>
+  <div class="dialog-header">
+    <h1>Join session</h1>
+  </div>
+
+  <div class="dialog-body">
+    <div class="form-group">
+      <label>Username</label>
+      <input
+        id="name"
+        type="text"
+        class="form-control"
+        placeholder="username visible to other users"
+        required
+      />
+    </div>
+
+    <div class="form-group">
+      <label>Session adress</label>
+      <input id="address" type="text" class="form-control" required />
+    </div>
+
+    <div class="dialog-footer">
+      <button id="cancel-btn" class="btn">Cancel</button>
+      <button id="ok-btn" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+</div>

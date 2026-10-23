@@ -1,0 +1,111 @@
+<div class="dialog">
+  <style>
+    .dialog-body {
+      padding: 15px;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      font-weight: 500;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .form-control {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .dialog-header h1 {
+      font-size: 16px;
+      text-align: center;
+    }
+    .mode-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 4px;
+    }
+    .mode-btn {
+      cursor: pointer;
+      background: #333;
+      border: 1px solid #555;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 3px;
+      font-size: 14px;
+      user-select: none;
+      line-height: 1;
+    }
+    .mode-btn:hover {
+      background: #444;
+    }
+    .mode-label {
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 150px;
+      text-align: center;
+      padding: 4px 0;
+      cursor: default;
+    }
+    .mode-desc {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      margin-top: 2px;
+      margin-bottom: 6px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+  <div class="dialog-header">
+    <h1>Session config</h1>
+  </div>
+  <div class="dialog-body">
+    <div class="form-group">
+      <label>Username</label>
+      <input
+        id="name"
+        type="text"
+        class="form-control"
+        placeholder="username visible to other users"
+        required
+      />
+    </div>
+    <div class="form-group" style="margin-bottom: 4px">
+      <label>Mode</label>
+      <div class="mode-selector">
+        <span class="mode-btn" id="mode-prev">&#9664;</span>
+        <span class="mode-label" id="mode-label" data-mode="lan">LAN (Original)</span>
+        <span class="mode-btn" id="mode-next">&#9654;</span>
+      </div>
+      <div class="mode-desc" id="mode-desc">Local server for your home Wi-Fi / LAN</div>
+    </div>
+    <div class="form-group hidden" id="playit-group">
+      <label>Playit.gg / Custom Tunnel Address</label>
+      <input
+        id="playit-address"
+        type="text"
+        class="form-control"
+        placeholder="e.g. your-name.ply.gg:12345, your-name.ply.gg, or IP:port"
+      />
+      <div style="font-size: 11px; color: #888; margin-top: 3px;">
+        Enter any Playit.gg tunnel or custom address (TCP mapped to local port 6789).
+      </div>
+    </div>
+    <div class="form-group hidden" id="server-group">
+      <label>Server address</label>
+      <input
+        id="server"
+        type="text"
+        class="form-control"
+        placeholder="http://192.168.1.x:6789?room=abc123"
+      />
+    </div>
+    <div class="dialog-footer">
+      <button id="cancel-btn" class="btn">Cancel</button>
+      <button id="ok-btn" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+</div>
