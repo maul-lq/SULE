@@ -1,6 +1,8 @@
+const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
 
-const PROVIDER_TIMEOUT = 20000;
+const PROVIDER_TIMEOUT = 25000;
 
 let tunnelInstance = null;
 let currentUrl = null;
@@ -57,12 +59,32 @@ async function withTimeout(promise, ms) {
   ]);
 }
 
+function getCloudflaredPath() {
+  const possiblePaths = [
+    'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe',
+    'C:\\Program Files\\cloudflared\\cloudflared.exe',
+    path.join(
+      process.env.LOCALAPPDATA || '',
+      'Microsoft',
+      'WinGet',
+      'Links',
+      'cloudflared.exe',
+    ),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return 'cloudflared';
+}
+
 // ─── cloudflared provider ───────────────────────────────────────────────────
 
 function tryCloudflared(port) {
   return new Promise((resolve, reject) => {
+    const binPath = getCloudflaredPath();
+    console.log(`[LS] Launching cloudflared using: ${binPath}`);
     const child = spawn(
-      'cloudflared',
+      binPath,
       ['tunnel', '--url', `http://localhost:${port}`, '--no-autoupdate'],
       {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -213,12 +235,39 @@ function tryLocalhostRun(port) {
   });
 }
 
-// ─── main loop ────────────────────────────────────────────────────────────
+// ─── main public methods ───────────────────────────────────────────────────
 
-const PROVIDERS = [
-  { name: 'localhost.run', fn: tryLocalhostRun },
-  { name: 'cloudflared', fn: tryCloudflared },
-];
+async function startCloudflareTunnel(port) {
+  stopTunnel();
+  console.log('[LS] Starting Cloudflare Tunnel (TryCloudflare)...');
+  try {
+    const instance = await withTimeout(tryCloudflared(port), PROVIDER_TIMEOUT);
+    cancelAllInFlight();
+
+    currentUrl = instance.url;
+    tunnelInstance = instance;
+    currentProviderName = 'cloudflared';
+
+    instance.onClose(() => {
+      console.log('[LS] Cloudflare Tunnel closed');
+      tunnelInstance = null;
+      currentUrl = null;
+      currentProviderName = null;
+    });
+
+    instance.onError((err) => {
+      console.error('[LS] Cloudflare Tunnel error:', err);
+    });
+
+    console.log(`[LS] Cloudflare Tunnel started: ${currentUrl}`);
+    return { url: currentUrl, errors: [] };
+  } catch (e) {
+    cancelAllInFlight();
+    const msg = `Cloudflare: ${e.message || e}`;
+    console.warn(`[LS] Cloudflare tunnel failed: ${msg}`);
+    return { url: null, errors: [msg] };
+  }
+}
 
 async function startSSHTunnel(port) {
   stopTunnel();
@@ -251,6 +300,11 @@ async function startSSHTunnel(port) {
     return { url: null, errors: [msg] };
   }
 }
+
+const PROVIDERS = [
+  { name: 'cloudflared', fn: tryCloudflared },
+  { name: 'localhost.run', fn: tryLocalhostRun },
+];
 
 async function startTunnel(port) {
   stopTunnel();
@@ -312,4 +366,11 @@ function stopTunnel() {
   }
 }
 
-module.exports = { startTunnel, startSSHTunnel, getTunnelUrl, stopTunnel };
+module.exports = {
+  startCloudflareTunnel,
+  startSSHTunnel,
+  startTunnel,
+  getTunnelUrl,
+  stopTunnel,
+  getCloudflaredPath,
+};

@@ -29,14 +29,19 @@ var require_fachada = __commonJS({
     }
     var MODES = [
       {
+        id: "cloudflare",
+        label: "Cloudflare Tunnel (~20ms)",
+        desc: "Low-latency public HTTPS tunnel via Cloudflare (Internet)"
+      },
+      {
         id: "ssh",
         label: "Windows SSH Tunnel",
-        desc: "Public HTTPS tunnel via Windows SSH (Internet)"
+        desc: "Fallback public HTTPS tunnel via Windows SSH (Internet)"
       },
       {
         id: "lan",
         label: "LAN (Local Wi-Fi)",
-        desc: "Local server for your home/office Wi-Fi or local PC"
+        desc: "Local server for your home/office Wi-Fi or same PC"
       },
       {
         id: "remote",
@@ -58,7 +63,7 @@ var require_fachada = __commonJS({
         const $el = dialog.getElement();
         const savedName = localStorage.getItem("liveshare:username") || "";
         const savedServer = localStorage.getItem("liveshare:server") || "";
-        const savedMode = localStorage.getItem("liveshare:mode") || "ssh";
+        const savedMode = localStorage.getItem("liveshare:mode") || "cloudflare";
         let currentModeIndex = MODES.findIndex((m) => m.id === savedMode);
         if (currentModeIndex === -1) currentModeIndex = 0;
         if (savedName) $el.find("#name").val(savedName);
@@ -27827,8 +27832,10 @@ var require_server2 = __commonJS({
 // js/tunnel.js
 var require_tunnel = __commonJS({
   "js/tunnel.js"(exports2, module2) {
+    var fs = require("fs");
+    var path = require("path");
     var { spawn } = require("child_process");
-    var PROVIDER_TIMEOUT = 2e4;
+    var PROVIDER_TIMEOUT = 25e3;
     var tunnelInstance = null;
     var currentUrl = null;
     var currentProviderName = null;
@@ -27877,10 +27884,29 @@ var require_tunnel = __commonJS({
         )
       ]);
     }
+    function getCloudflaredPath() {
+      const possiblePaths = [
+        "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe",
+        "C:\\Program Files\\cloudflared\\cloudflared.exe",
+        path.join(
+          process.env.LOCALAPPDATA || "",
+          "Microsoft",
+          "WinGet",
+          "Links",
+          "cloudflared.exe"
+        )
+      ];
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) return p;
+      }
+      return "cloudflared";
+    }
     function tryCloudflared(port) {
       return new Promise((resolve, reject) => {
+        const binPath = getCloudflaredPath();
+        console.log(`[LS] Launching cloudflared using: ${binPath}`);
         const child = spawn(
-          "cloudflared",
+          binPath,
           ["tunnel", "--url", `http://localhost:${port}`, "--no-autoupdate"],
           {
             stdio: ["ignore", "pipe", "pipe"]
@@ -28017,10 +28043,33 @@ var require_tunnel = __commonJS({
         }, PROVIDER_TIMEOUT);
       });
     }
-    var PROVIDERS = [
-      { name: "localhost.run", fn: tryLocalhostRun },
-      { name: "cloudflared", fn: tryCloudflared }
-    ];
+    async function startCloudflareTunnel(port) {
+      stopTunnel();
+      console.log("[LS] Starting Cloudflare Tunnel (TryCloudflare)...");
+      try {
+        const instance = await withTimeout(tryCloudflared(port), PROVIDER_TIMEOUT);
+        cancelAllInFlight();
+        currentUrl = instance.url;
+        tunnelInstance = instance;
+        currentProviderName = "cloudflared";
+        instance.onClose(() => {
+          console.log("[LS] Cloudflare Tunnel closed");
+          tunnelInstance = null;
+          currentUrl = null;
+          currentProviderName = null;
+        });
+        instance.onError((err) => {
+          console.error("[LS] Cloudflare Tunnel error:", err);
+        });
+        console.log(`[LS] Cloudflare Tunnel started: ${currentUrl}`);
+        return { url: currentUrl, errors: [] };
+      } catch (e) {
+        cancelAllInFlight();
+        const msg = `Cloudflare: ${e.message || e}`;
+        console.warn(`[LS] Cloudflare tunnel failed: ${msg}`);
+        return { url: null, errors: [msg] };
+      }
+    }
     async function startSSHTunnel(port) {
       stopTunnel();
       console.log("[LS] Starting Windows SSH tunnel (localhost.run)...");
@@ -28048,6 +28097,10 @@ var require_tunnel = __commonJS({
         return { url: null, errors: [msg] };
       }
     }
+    var PROVIDERS = [
+      { name: "cloudflared", fn: tryCloudflared },
+      { name: "localhost.run", fn: tryLocalhostRun }
+    ];
     async function startTunnel(port) {
       stopTunnel();
       const errors = [];
@@ -28098,7 +28151,14 @@ var require_tunnel = __commonJS({
         currentProviderName = null;
       }
     }
-    module2.exports = { startTunnel, startSSHTunnel, getTunnelUrl, stopTunnel };
+    module2.exports = {
+      startCloudflareTunnel,
+      startSSHTunnel,
+      startTunnel,
+      getTunnelUrl,
+      stopTunnel,
+      getCloudflaredPath
+    };
   }
 });
 
@@ -28144,7 +28204,27 @@ var require_net = __commonJS({
       } else {
         am_i_hosting = true;
         await server.startServer(server.defaultPort);
-        if (mode === "ssh" || mode === "tunnel") {
+        if (mode === "cloudflare") {
+          const port = server.getServerPort();
+          const result = await tunnel.startCloudflareTunnel(port);
+          if (result.url) {
+            activeTunnelUrl = result.url;
+            console.log(`[LS] Cloudflare Tunnel URL: ${activeTunnelUrl}`);
+          } else {
+            const fachada2 = require_fachada();
+            const detail = result.errors.length > 0 ? " (" + result.errors.join("; ") + ")" : "";
+            fachada2.WARN(
+              "Cloudflare Tunnel failed. Falling back to SSH Tunnel..." + detail
+            );
+            const sshResult = await tunnel.startSSHTunnel(port);
+            if (sshResult.url) {
+              activeTunnelUrl = sshResult.url;
+              console.log(`[LS] Fallback SSH Tunnel URL: ${activeTunnelUrl}`);
+            } else {
+              fachada2.WARN("All tunnels failed \u2014 LAN only.");
+            }
+          }
+        } else if (mode === "ssh" || mode === "tunnel") {
           const port = server.getServerPort();
           const result = await tunnel.startSSHTunnel(port);
           if (result.url) {

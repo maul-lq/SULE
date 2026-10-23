@@ -26,14 +26,19 @@ function _createDialog(templateName) {
 
 const MODES = [
   {
+    id: 'cloudflare',
+    label: 'Cloudflare Tunnel (~20ms)',
+    desc: 'Low-latency public HTTPS tunnel via Cloudflare (Internet)',
+  },
+  {
     id: 'ssh',
     label: 'Windows SSH Tunnel',
-    desc: 'Public HTTPS tunnel via Windows SSH (Internet)',
+    desc: 'Fallback public HTTPS tunnel via Windows SSH (Internet)',
   },
   {
     id: 'lan',
     label: 'LAN (Local Wi-Fi)',
-    desc: 'Local server for your home/office Wi-Fi or local PC',
+    desc: 'Local server for your home/office Wi-Fi or same PC',
   },
   {
     id: 'remote',
@@ -59,7 +64,7 @@ async function showSSDialog() {
     // Restore saved settings
     const savedName = localStorage.getItem('liveshare:username') || '';
     const savedServer = localStorage.getItem('liveshare:server') || '';
-    const savedMode = localStorage.getItem('liveshare:mode') || 'ssh';
+    const savedMode = localStorage.getItem('liveshare:mode') || 'cloudflare';
 
     let currentModeIndex = MODES.findIndex((m) => m.id === savedMode);
     if (currentModeIndex === -1) currentModeIndex = 0;

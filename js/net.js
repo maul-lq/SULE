@@ -45,7 +45,28 @@ async function startSession(name, mode, remoteServer) {
     am_i_hosting = true;
     await server.startServer(server.defaultPort);
 
-    if (mode === 'ssh' || mode === 'tunnel') {
+    if (mode === 'cloudflare') {
+      const port = server.getServerPort();
+      const result = await tunnel.startCloudflareTunnel(port);
+      if (result.url) {
+        activeTunnelUrl = result.url;
+        console.log(`[LS] Cloudflare Tunnel URL: ${activeTunnelUrl}`);
+      } else {
+        const fachada = require('./fachada.js');
+        const detail =
+          result.errors.length > 0 ? ' (' + result.errors.join('; ') + ')' : '';
+        fachada.WARN(
+          'Cloudflare Tunnel failed. Falling back to SSH Tunnel...' + detail,
+        );
+        const sshResult = await tunnel.startSSHTunnel(port);
+        if (sshResult.url) {
+          activeTunnelUrl = sshResult.url;
+          console.log(`[LS] Fallback SSH Tunnel URL: ${activeTunnelUrl}`);
+        } else {
+          fachada.WARN('All tunnels failed — LAN only.');
+        }
+      }
+    } else if (mode === 'ssh' || mode === 'tunnel') {
       const port = server.getServerPort();
       const result = await tunnel.startSSHTunnel(port);
       if (result.url) {

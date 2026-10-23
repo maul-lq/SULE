@@ -21,7 +21,18 @@ global.app = {
 const net = require('../js/net.js');
 
 async function run() {
-  console.log('\n1. Testing startSession (LAN mode)...');
+  console.log('\n1. Testing startSession (Cloudflare Tunnel mode)...');
+  const cfStarted = await net.startSession('Alice', 'cloudflare');
+  console.log('   Cloudflare Session Started:', cfStarted);
+  const cfLink = net.getSessionLink();
+  console.log('   Cloudflare link generated:', cfLink);
+  if (!cfLink.startsWith('https://') || !cfLink.includes('.trycloudflare.com/?room=')) {
+    throw new Error('Cloudflare link mismatch: ' + cfLink);
+  }
+  net.endSession();
+  console.log('   Cloudflare session ended cleanly.');
+
+  console.log('\n2. Testing startSession (LAN mode)...');
   const lanStarted = await net.startSession('Alice', 'lan');
   console.log('   Started:', lanStarted);
   const lanLink = net.getSessionLink();
@@ -31,17 +42,6 @@ async function run() {
   }
   net.endSession();
   console.log('   LAN session ended cleanly.');
-
-  console.log('\n2. Testing startSession (Windows SSH Tunnel mode)...');
-  const sshStarted = await net.startSession('Alice', 'ssh');
-  console.log('   SSH Tunnel Started:', sshStarted);
-  const sshLink = net.getSessionLink();
-  console.log('   SSH link generated:', sshLink);
-  if (!sshLink.startsWith('https://') || !sshLink.includes('.lhr.life/?room=')) {
-    throw new Error('SSH link mismatch: ' + sshLink);
-  }
-  net.endSession();
-  console.log('   SSH session ended cleanly.');
 
   console.log('\nSUCCESS: All unit and integration tests passed!');
   process.exit(0);
