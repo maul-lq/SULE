@@ -19,37 +19,9 @@ global.app = {
 };
 
 const net = require('../js/net.js');
-const fachada = require('../js/fachada.js');
 
 async function run() {
-  console.log('1. Testing resolvePlayitAddress...');
-  const addr1 = await fachada.resolvePlayitAddress('performers-delay.tun.ply.gg');
-  console.log('   Auto-detected port:', addr1);
-  if (addr1 !== 'http://performers-delay.tun.ply.gg:55392') {
-    throw new Error('SRV resolution mismatch: ' + addr1);
-  }
-
-  const addr2 = await fachada.resolvePlayitAddress('performers-delay.tun.ply.gg:55392');
-  console.log('   Explicit port:', addr2);
-  if (addr2 !== 'http://performers-delay.tun.ply.gg:55392') {
-    throw new Error('Explicit port mismatch: ' + addr2);
-  }
-
-  console.log('\n2. Testing startSession (Playit mode)...');
-  const started = await net.startSession('Alice', 'playit', addr1);
-  console.log('   Started:', started);
-  if (!started) throw new Error('Session did not start');
-
-  const link = net.getSessionLink();
-  console.log('   Session link generated:', link);
-  if (!link.startsWith('http://performers-delay.tun.ply.gg:55392/?room=')) {
-    throw new Error('Link mismatch: ' + link);
-  }
-
-  net.endSession();
-  console.log('   Session ended.');
-
-  console.log('\n3. Testing startSession (LAN mode)...');
+  console.log('\n1. Testing startSession (LAN mode)...');
   const lanStarted = await net.startSession('Alice', 'lan');
   console.log('   Started:', lanStarted);
   const lanLink = net.getSessionLink();
@@ -58,6 +30,18 @@ async function run() {
     throw new Error('LAN link mismatch: ' + lanLink);
   }
   net.endSession();
+  console.log('   LAN session ended cleanly.');
+
+  console.log('\n2. Testing startSession (Windows SSH Tunnel mode)...');
+  const sshStarted = await net.startSession('Alice', 'ssh');
+  console.log('   SSH Tunnel Started:', sshStarted);
+  const sshLink = net.getSessionLink();
+  console.log('   SSH link generated:', sshLink);
+  if (!sshLink.startsWith('https://') || !sshLink.includes('.lhr.life/?room=')) {
+    throw new Error('SSH link mismatch: ' + sshLink);
+  }
+  net.endSession();
+  console.log('   SSH session ended cleanly.');
 
   console.log('\nSUCCESS: All unit and integration tests passed!');
   process.exit(0);

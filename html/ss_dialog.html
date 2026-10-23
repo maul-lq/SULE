@@ -77,22 +77,10 @@
       <label>Mode</label>
       <div class="mode-selector">
         <span class="mode-btn" id="mode-prev">&#9664;</span>
-        <span class="mode-label" id="mode-label" data-mode="lan">LAN (Original)</span>
+        <span class="mode-label" id="mode-label" data-mode="ssh">Windows SSH Tunnel</span>
         <span class="mode-btn" id="mode-next">&#9654;</span>
       </div>
-      <div class="mode-desc" id="mode-desc">Local server for your home Wi-Fi / LAN</div>
-    </div>
-    <div class="form-group hidden" id="playit-group">
-      <label>Playit.gg / Custom Tunnel Address</label>
-      <input
-        id="playit-address"
-        type="text"
-        class="form-control"
-        placeholder="e.g. your-name.ply.gg:12345, your-name.ply.gg, or IP:port"
-      />
-      <div style="font-size: 11px; color: #888; margin-top: 3px;">
-        Enter any Playit.gg tunnel or custom address (TCP mapped to local port 6789).
-      </div>
+      <div class="mode-desc" id="mode-desc">Public HTTPS tunnel via Windows SSH (Internet)</div>
     </div>
     <div class="form-group hidden" id="server-group">
       <label>Server address</label>

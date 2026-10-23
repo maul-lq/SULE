@@ -8,7 +8,6 @@ var require_fachada = __commonJS({
   "js/fachada.js"(exports2, module2) {
     var fs = require("fs");
     var path = require("path");
-    var dns = require("dns");
     function INFO(mensaje) {
       console.log(`[LS] ${mensaje}`);
       app.toast.info(mensaje);
@@ -30,19 +29,14 @@ var require_fachada = __commonJS({
     }
     var MODES = [
       {
-        id: "lan",
-        label: "LAN (Original)",
-        desc: "Local server for your home Wi-Fi / LAN"
-      },
-      {
-        id: "playit",
-        label: "Playit.gg Tunnel",
-        desc: "Public tunnel via Playit.gg (Minecraft Java / TCP)"
-      },
-      {
         id: "ssh",
         label: "Windows SSH Tunnel",
-        desc: "Instant zero-setup public HTTPS tunnel via Windows SSH"
+        desc: "Public HTTPS tunnel via Windows SSH (Internet)"
+      },
+      {
+        id: "lan",
+        label: "LAN (Local Wi-Fi)",
+        desc: "Local server for your home/office Wi-Fi or local PC"
       },
       {
         id: "remote",
@@ -50,26 +44,6 @@ var require_fachada = __commonJS({
         desc: "Connect to an existing standalone remote server"
       }
     ];
-    async function resolvePlayitAddress(rawAddress) {
-      let address = (rawAddress || "").trim();
-      if (!address) return "";
-      let hostPart = address.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").trim();
-      if (hostPart.includes(":")) {
-        return "http://" + hostPart;
-      }
-      if (hostPart.endsWith(".ply.gg") || hostPart.endsWith(".joinmc.link")) {
-        try {
-          const records = await dns.promises.resolveSrv("_minecraft._tcp." + hostPart);
-          if (records && records.length > 0 && records[0].port) {
-            console.log(`[LS] Resolved SRV for ${hostPart}: port ${records[0].port}`);
-            return `http://${hostPart}:${records[0].port}`;
-          }
-        } catch (e) {
-          console.warn(`[LS] SRV lookup for ${hostPart} failed or not found:`, e.message);
-        }
-      }
-      return "http://" + hostPart;
-    }
     async function showSSDialog() {
       return new Promise((resolve) => {
         const htmlPath = path.join("html", "ss_dialog.html");
@@ -83,26 +57,19 @@ var require_fachada = __commonJS({
         }
         const $el = dialog.getElement();
         const savedName = localStorage.getItem("liveshare:username") || "";
-        const savedPlayit = localStorage.getItem("liveshare:playit_address") || "";
         const savedServer = localStorage.getItem("liveshare:server") || "";
-        const savedMode = localStorage.getItem("liveshare:mode") || "lan";
+        const savedMode = localStorage.getItem("liveshare:mode") || "ssh";
         let currentModeIndex = MODES.findIndex((m) => m.id === savedMode);
         if (currentModeIndex === -1) currentModeIndex = 0;
         if (savedName) $el.find("#name").val(savedName);
-        if (savedPlayit) $el.find("#playit-address").val(savedPlayit);
         if (savedServer) $el.find("#server").val(savedServer);
         function updateMode(index) {
           const mode = MODES[index];
           $el.find("#mode-label").text(mode.label).attr("data-mode", mode.id);
           $el.find("#mode-desc").text(mode.desc);
-          if (mode.id === "playit") {
-            $el.find("#playit-group").removeClass("hidden");
-            $el.find("#server-group").addClass("hidden");
-          } else if (mode.id === "remote") {
+          if (mode.id === "remote") {
             $el.find("#server-group").removeClass("hidden");
-            $el.find("#playit-group").addClass("hidden");
           } else {
-            $el.find("#playit-group").addClass("hidden");
             $el.find("#server-group").addClass("hidden");
           }
         }
@@ -118,7 +85,6 @@ var require_fachada = __commonJS({
         $el.on("click", "#ok-btn", async () => {
           const name = $el.find("#name").val().trim();
           const mode = $el.find("#mode-label").attr("data-mode");
-          const rawPlayit = $el.find("#playit-address").val().trim();
           const server = $el.find("#server").val().trim();
           if (!name) {
             ERR("Username cannot be empty.");
@@ -126,17 +92,6 @@ var require_fachada = __commonJS({
           }
           localStorage.setItem("liveshare:username", name);
           localStorage.setItem("liveshare:mode", mode);
-          if (mode === "playit") {
-            if (!rawPlayit) {
-              ERR("Playit.gg address cannot be empty.");
-              return;
-            }
-            const resolvedPlayit = await resolvePlayitAddress(rawPlayit);
-            localStorage.setItem("liveshare:playit_address", rawPlayit);
-            dialog.close();
-            resolve({ name, mode, tunnelAddress: resolvedPlayit });
-            return;
-          }
           if (mode === "remote") {
             if (!server) {
               ERR("Server address cannot be empty.");
@@ -295,7 +250,6 @@ var require_fachada = __commonJS({
       enableHostOptions,
       showLoadingOverlay,
       hideLoadingOverlay,
-      resolvePlayitAddress,
       INFO,
       WARN,
       ERR
@@ -28183,19 +28137,14 @@ var require_net = __commonJS({
     function setUpdateMenuStates(fn) {
       updateMenuStatesFn = fn;
     }
-    async function startSession2(name, mode, serverOrTunnel) {
+    async function startSession2(name, mode, remoteServer) {
       if (mode === "remote") {
         am_i_hosting = false;
-        am_i_connected = await client.connectToServer(serverOrTunnel, name, -1);
+        am_i_connected = await client.connectToServer(remoteServer, name, -1);
       } else {
         am_i_hosting = true;
         await server.startServer(server.defaultPort);
-        if (mode === "playit") {
-          if (serverOrTunnel) {
-            activeTunnelUrl = serverOrTunnel;
-            console.log(`[LS] Playit Tunnel URL: ${activeTunnelUrl}`);
-          }
-        } else if (mode === "ssh" || mode === "tunnel") {
+        if (mode === "ssh" || mode === "tunnel") {
           const port = server.getServerPort();
           const result = await tunnel.startSSHTunnel(port);
           if (result.url) {
@@ -28560,11 +28509,7 @@ var userPanel = new UserPanel();
 async function startSession() {
   const data = await fachada.showSS();
   if (!data) return;
-  if (!await net.startSession(
-    data.name,
-    data.mode,
-    data.tunnelAddress || data.server
-  )) {
+  if (!await net.startSession(data.name, data.mode, data.server)) {
     fachada.WARN("Couldnt start session");
     return;
   }

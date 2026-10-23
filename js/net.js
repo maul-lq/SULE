@@ -37,20 +37,15 @@ function setUpdateMenuStates(fn) {
   updateMenuStatesFn = fn;
 }
 
-async function startSession(name, mode, serverOrTunnel) {
+async function startSession(name, mode, remoteServer) {
   if (mode === 'remote') {
     am_i_hosting = false;
-    am_i_connected = await client.connectToServer(serverOrTunnel, name, -1);
+    am_i_connected = await client.connectToServer(remoteServer, name, -1);
   } else {
     am_i_hosting = true;
     await server.startServer(server.defaultPort);
 
-    if (mode === 'playit') {
-      if (serverOrTunnel) {
-        activeTunnelUrl = serverOrTunnel;
-        console.log(`[LS] Playit Tunnel URL: ${activeTunnelUrl}`);
-      }
-    } else if (mode === 'ssh' || mode === 'tunnel') {
+    if (mode === 'ssh' || mode === 'tunnel') {
       const port = server.getServerPort();
       const result = await tunnel.startSSHTunnel(port);
       if (result.url) {

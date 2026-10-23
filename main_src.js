@@ -9,13 +9,7 @@ async function startSession() {
   const data = await fachada.showSS();
   if (!data) return;
 
-  if (
-    !(await net.startSession(
-      data.name,
-      data.mode,
-      data.tunnelAddress || data.server,
-    ))
-  ) {
+  if (!(await net.startSession(data.name, data.mode, data.server))) {
     fachada.WARN('Couldnt start session');
     return;
   }
